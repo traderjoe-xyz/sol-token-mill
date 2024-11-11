@@ -1,0 +1,21 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+token-mill = "JoeaRXgtME3jAoz5WuFXGEndfv4NPH9nBxsLq44hk9J"
+
+[programs.localnet]
+token-mill = "JoeaRXgtME3jAoz5WuFXGEndfv4NPH9nBxsLq44hk9J"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "bun test"

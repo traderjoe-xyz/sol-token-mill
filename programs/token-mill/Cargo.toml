@@ -1,0 +1,33 @@
+[package]
+name = "token-mill"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "token_mill"
+doctest = false
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+bytemuck.workspace = true
+ruint.workspace = true
+
+[dev-dependencies]
+joelana-test-utils.workspace = true
+solana-program.workspace = true
+solana-sdk.workspace = true
+litesvm.workspace = true
+proptest.workspace = true
+rstest.workspace = true
+anyhow.workspace = true

@@ -1,0 +1,24 @@
+{
+  "name": "joelana",
+  "module": "index.ts",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "RUST_LOG=off bun test --watch",
+    "testnet": " bun run scripts/deploy-testnet.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/spl-token": "^0.4.3",
+    "@solana/web3.js": "^1.91.4",
+    "anchor-bankrun": "^0.3.0",
+    "solana-bankrun": "^0.3.0",
+    "spl-token-bankrun": "^0.2.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
