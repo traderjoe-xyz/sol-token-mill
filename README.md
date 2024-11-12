@@ -1,10 +1,11 @@
-# Joelana
+# Sol-Token-Mill
 
-LFJ's Solana smart contracts. Javascript scripts work with [Bun](https://bun.sh/), to install dependencies, run `bun install`.
+Token Mill smart contracts for Solana. Built by LFJ. 
+Javascript scripts work with [Bun](https://bun.sh/), to install dependencies, run `bun install`.
 
 ## Token Mill
 
-Token launchpad using customizable bonding curve. Includes fee sharing (to protocol, creator, referrals and staking), along with token vesting. Solidity implementation can be found at https://github.com/traderjoe-xyz/token-mill.
+Token launchpad using customizable bonding curve. Includes fee sharing (to protocol, creator, referrals and staking), along with token vesting. Solidity implementation can be found at <TBD>.
 
 ### Testing
 
