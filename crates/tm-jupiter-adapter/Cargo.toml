@@ -1,0 +1,16 @@
+[package]
+name = "tokenmill-jupiter-adapter"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+solana-program.workspace = true
+solana-sdk.workspace = true
+litesvm.workspace = true
+litesvm-token.workspace = true
+token-mill.workspace = true
+revm.workspace = true
+alloy.workspace = true
+jupiter-amm-interface.workspace = true

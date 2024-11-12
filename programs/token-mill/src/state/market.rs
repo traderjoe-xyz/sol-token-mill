@@ -45,7 +45,7 @@ pub struct Market {
     pub quote_token_decimals: u8,
     pub bump: u8,
 
-    _space: [u8; 6],
+    pub _space: [u8; 6],
 }
 
 impl MarketFees {

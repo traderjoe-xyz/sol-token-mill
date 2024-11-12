@@ -29,6 +29,9 @@ solana-sdk = "1.18"
 litesvm = "0.2.0"
 litesvm-token = { version = "0.2.1", features = ["token-2022"] }
 
+# Jupiter adapter
+jupiter-amm-interface = "0.4.5"
+
 # Testing
 proptest = "1.5.0"
 rstest = "0.22.0"
