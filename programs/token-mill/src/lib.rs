@@ -115,7 +115,7 @@ pub mod token_mill {
         instructions::staking::withdraw::handler(ctx, amount)
     }
 
-    pub fn claim_staking_rewards(ctx: Context<StakingRewardsClaim>) -> Result<()> {
+    pub fn claim_staking_rewards(ctx: Context<StakingRewardsClaim>) -> Result<u64> {
         instructions::staking::claim_staking_rewards::handler(ctx)
     }
 
