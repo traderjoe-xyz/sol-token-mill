@@ -136,7 +136,7 @@ pub mod token_mill {
         )
     }
 
-    pub fn release(ctx: Context<Release>) -> Result<()> {
+    pub fn release(ctx: Context<Release>) -> Result<u64> {
         instructions::vesting::release::handler(ctx)
     }
 

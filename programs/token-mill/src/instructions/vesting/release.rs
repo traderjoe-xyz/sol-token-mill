@@ -50,7 +50,7 @@ pub struct Release<'info> {
     pub base_token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<Release>) -> Result<()> {
+pub fn handler(ctx: Context<Release>) -> Result<u64> {
     let staking = &mut ctx.accounts.staking;
     let stake_position = &mut ctx.accounts.stake_position;
     let vesting_plan = &mut ctx.accounts.vesting_plan;
@@ -92,7 +92,7 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
         amount_released,
     });
 
-    Ok(())
+    Ok(amount_released)
 }
 
 #[cfg(test)]
