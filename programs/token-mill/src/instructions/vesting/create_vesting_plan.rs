@@ -130,7 +130,7 @@ mod tests {
         testing_env.svm.change_payer("bob");
 
         let create_vesting_action =
-            CreateVestingPlanAction::new(VESTING_AMOUNT, STARTING_SLOT, 300, 60);
+            CreateVestingPlanAction::new(&testing_env, VESTING_AMOUNT, STARTING_SLOT, 300, 60);
 
         testing_env
             .svm

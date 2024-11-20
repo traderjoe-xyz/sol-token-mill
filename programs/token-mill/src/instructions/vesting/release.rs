@@ -115,6 +115,7 @@ mod tests {
         testing_env.svm.change_payer("bob");
 
         let create_vesting_action = CreateVestingPlanAction::new(
+            &testing_env,
             VESTING_AMOUNT,
             STARTING_SLOT,
             VESTING_DURATION,
@@ -126,7 +127,7 @@ mod tests {
             .execute_actions(&[&create_vesting_action])
             .unwrap();
 
-        let action = ReleaseAction::new();
+        let action = ReleaseAction::new(&testing_env);
 
         (testing_env, action)
     }
@@ -140,13 +141,14 @@ mod tests {
         testing_env.svm.change_payer("bob");
 
         let create_vesting_action = CreateVestingPlanAction::new(
+            &testing_env,
             VESTING_AMOUNT,
             STARTING_SLOT + 60,
             VESTING_DURATION,
             CLIFF_DURATION,
         );
 
-        let action = ReleaseAction::new();
+        let action = ReleaseAction::new(&testing_env);
 
         testing_env.svm.warp(20);
 

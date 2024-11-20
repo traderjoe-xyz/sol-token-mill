@@ -5,10 +5,10 @@ use crate::{
     },
     utils::token_mill::{constants::*, curve_generator::Curve},
 };
-use anchor_lang::{prelude::AccountMeta, InstructionData};
+use anchor_lang::{prelude::AccountMeta, Id, InstructionData};
 use anchor_spl::{
-    associated_token::get_associated_token_address_with_program_id, token::spl_token,
-    token_2022::spl_token_2022,
+    associated_token::get_associated_token_address_with_program_id, metadata::Metadata,
+    token::spl_token, token_2022::spl_token_2022,
 };
 use anyhow::Result;
 use litesvm::types::{FailedTransactionMetadata, TransactionMetadata};
@@ -38,6 +38,7 @@ pub struct TokenMillEnv {
     pub config: Pubkey,
     pub market: Pubkey,
     pub base_token_mint: Option<Pubkey>,
+    pub base_token_type: TokenType,
     pub quote_token_mint: Option<Pubkey>,
     pub quote_token_type: TokenType,
 }
@@ -57,6 +58,7 @@ impl TokenMillEnv {
         let mut svm = JoelanaEnv::new();
 
         svm.add_token_mill_program();
+        svm.add_metadata_program();
 
         svm.execute_actions(&[
             &CreateConfigAction::new(),
@@ -69,6 +71,7 @@ impl TokenMillEnv {
             config: make_address("config"),
             market: Pubkey::new_unique(),
             base_token_mint: Some(make_address("base_token_mint")),
+            base_token_type: TokenType::Token2022,
             quote_token_mint: None,
             quote_token_type: TokenType::Token,
         }
@@ -95,6 +98,12 @@ impl TokenMillEnv {
         self
     }
 
+    pub fn with_base_token_type(mut self, base_token_type: TokenType) -> Self {
+        self.base_token_type = base_token_type;
+
+        self
+    }
+
     pub fn with_default_market(self) -> Self {
         self.with_market(make_address("base_token_mint"), DEFAULT_TOTAL_SUPPLY)
     }
@@ -104,36 +113,50 @@ impl TokenMillEnv {
 
         let quote_token_mint = self.quote_token_mint.unwrap();
 
-        let mut create_market_action = CreateMarketAction::new(&self);
-        create_market_action.total_supply = total_supply;
+        let market = match self.base_token_type {
+            TokenType::Token => {
+                let mut create_market_action = CreateMarketWithSplAction::new(&self);
+                create_market_action.total_supply = total_supply;
 
-        let set_prices_action = SetMarketPricesAction::new(Curve::default());
+                let set_prices_action = SetMarketPricesAction::new(Curve::default());
 
-        self.svm
-            .execute_actions(&[create_market_action.no_badge(), &set_prices_action])
-            .unwrap();
+                self.svm
+                    .execute_actions(&[create_market_action.no_badge(), &set_prices_action])
+                    .unwrap();
+
+                create_market_action.market
+            }
+            TokenType::Token2022 => {
+                let mut create_market_action = CreateMarketAction::new(&self);
+                create_market_action.total_supply = total_supply;
+
+                let set_prices_action = SetMarketPricesAction::new(Curve::default());
+
+                self.svm
+                    .execute_actions(&[create_market_action.no_badge(), &set_prices_action])
+                    .unwrap();
+
+                create_market_action.market
+            }
+        };
 
         // Create ATAs
         for actor in ACTORS {
             self.svm
-                .create_ata(&make_address(actor), &base_token_mint, TokenType::Token2022)
+                .create_ata(&make_address(actor), &base_token_mint, self.base_token_type)
                 .unwrap();
         }
 
         self.svm
-            .create_ata(
-                &create_market_action.market,
-                &quote_token_mint,
-                self.quote_token_type,
-            )
+            .create_ata(&market, &quote_token_mint, self.quote_token_type)
             .unwrap();
 
-        self.market = create_market_action.market;
+        self.market = market;
         self.base_token_mint = Some(base_token_mint);
 
         self.svm
             .tokens
-            .insert(base_token_mint, TokenType::Token2022);
+            .insert(base_token_mint, self.base_token_type);
 
         self
     }
@@ -632,6 +655,122 @@ impl InstructionGenerator for CreateMarketAction {
     }
 }
 
+pub struct CreateMarketWithSplAction {
+    // Accounts
+    pub config: Pubkey,
+    pub market: Pubkey,
+    pub base_token_mint: Pubkey,
+    pub base_token_metadata: Pubkey,
+    pub market_base_token_ata: Pubkey,
+    pub quote_token_badge: Pubkey,
+    pub quote_token_mint: Pubkey,
+    pub signer: Pubkey,
+    // Args
+    pub total_supply: u64,
+}
+
+impl CreateMarketWithSplAction {
+    pub fn new(testing_env: &TokenMillEnv) -> Self {
+        let config = make_address("config");
+
+        let base_token_mint = testing_env.base_token_mint.unwrap();
+
+        let base_token_metadata = Pubkey::find_program_address(
+            &[
+                "metadata".as_bytes(),
+                &Metadata::id().to_bytes(),
+                &base_token_mint.to_bytes(),
+            ],
+            &Metadata::id(),
+        )
+        .0;
+
+        let market = Pubkey::find_program_address(
+            &[MARKET_PDA_SEED.as_bytes(), &base_token_mint.to_bytes()],
+            &token_mill::ID,
+        )
+        .0;
+
+        let quote_token_mint = testing_env.quote_token_mint.unwrap();
+
+        let quote_asset_badge = Pubkey::find_program_address(
+            &[
+                QUOTE_TOKEN_BADGE_PDA_SEED.as_bytes(),
+                &config.to_bytes(),
+                &quote_token_mint.to_bytes(),
+            ],
+            &token_mill::ID,
+        )
+        .0;
+
+        let market_base_token_ata = get_associated_token_address_with_program_id(
+            &market,
+            &base_token_mint,
+            &spl_token::id(),
+        );
+
+        Self {
+            config,
+            market,
+            base_token_mint,
+            base_token_metadata,
+            market_base_token_ata,
+            quote_token_mint,
+            quote_token_badge: quote_asset_badge,
+            signer: make_address("alice"),
+            total_supply: DEFAULT_TOTAL_SUPPLY,
+        }
+    }
+
+    pub fn no_badge(&mut self) -> &mut Self {
+        self.quote_token_badge = token_mill::ID;
+
+        self
+    }
+}
+
+impl InstructionGenerator for CreateMarketWithSplAction {
+    fn accounts(&self) -> Vec<AccountMeta> {
+        let mut accounts = vec![
+            AccountMeta::new_readonly(self.config, false),
+            AccountMeta::new(self.market, false),
+            AccountMeta::new(self.base_token_mint, true),
+            AccountMeta::new(self.base_token_metadata, false),
+            AccountMeta::new(self.market_base_token_ata, false),
+            AccountMeta::new_readonly(self.quote_token_badge, false),
+            AccountMeta::new_readonly(self.quote_token_mint, false),
+        ];
+
+        accounts
+            .append_payer(self.signer)
+            .append_system_program()
+            .append_rent_program()
+            .append_token_program()
+            .append_metadata_program()
+            .append_associated_token_program()
+            .append_cpi_event_accounts(tm_event_authority());
+
+        accounts
+    }
+
+    fn instruction(&self) -> Instruction {
+        let input = token_mill::instruction::CreateMarketWithSpl {
+            name: "name".to_string(),
+            symbol: "symbol".to_string(),
+            uri: "uri".to_string(),
+            total_supply: self.total_supply,
+            creator_fee_share: DEFAULT_CREATOR_FEE_SHARE,
+            staking_fee_share: DEFAULT_STAKING_FEE_SHARE,
+        };
+
+        Instruction {
+            program_id: token_mill::ID,
+            accounts: self.accounts(),
+            data: input.data(),
+        }
+    }
+}
+
 pub struct SetMarketPricesAction {
     // Accounts
     pub market: Pubkey,
@@ -712,6 +851,7 @@ pub struct SwapAction {
     pub protocol_quote_token_ata: Pubkey,
     pub referral_quote_token_ata: Pubkey,
     pub signer: Pubkey,
+    pub base_token_program: Pubkey,
     pub quote_token_program: Pubkey,
     // Args
     pub swap_type: SwapType,
@@ -731,6 +871,7 @@ impl SwapAction {
     ) -> Self {
         let config = make_address("config");
         let base_token_mint = token_mill_env.base_token_mint.unwrap();
+        let base_token_program = token_mill_env.base_token_type.program_address();
 
         let signer = make_address("bob");
 
@@ -746,7 +887,7 @@ impl SwapAction {
         let market_base_token_ata = get_associated_token_address_with_program_id(
             &market,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &token_mill_env.base_token_type.program_address(),
         );
 
         let market_quote_token_ata = get_associated_token_address_with_program_id(
@@ -758,7 +899,7 @@ impl SwapAction {
         let user_base_token_ata = get_associated_token_address_with_program_id(
             &signer,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &token_mill_env.base_token_type.program_address(),
         );
 
         let user_quote_token_ata = get_associated_token_address_with_program_id(
@@ -809,6 +950,7 @@ impl SwapAction {
             protocol_quote_token_ata,
             referral_quote_token_ata,
             signer,
+            base_token_program,
             quote_token_program,
             swap_type,
             swap_amount_type,
@@ -833,15 +975,10 @@ impl InstructionGenerator for SwapAction {
             AccountMeta::new(self.referral_quote_token_ata, false),
         ];
 
-        accounts
-            .append_payer(self.signer)
-            .append_token_2022_program();
+        accounts.append_payer(self.signer);
 
-        match self.quote_token_program {
-            spl_token::ID => accounts.append_token_program(),
-            spl_token_2022::ID => accounts.append_token_2022_program(),
-            _ => unreachable!(),
-        };
+        accounts.push(AccountMeta::new_readonly(self.base_token_program, false));
+        accounts.push(AccountMeta::new_readonly(self.quote_token_program, false));
 
         accounts.append_cpi_event_accounts(tm_event_authority());
 
@@ -1190,6 +1327,7 @@ pub struct DepositAction {
     pub market_staking: Pubkey,
     pub stake_position: Pubkey,
     pub base_token_mint: Pubkey,
+    pub base_token_program: Pubkey,
     pub market_base_token_ata: Pubkey,
     pub user_base_token_ata: Pubkey,
     pub signer: Pubkey,
@@ -1201,6 +1339,7 @@ impl DepositAction {
     pub fn new(testing_env: &TokenMillEnv, amount: u64) -> Self {
         let signer = make_address("bob");
         let base_token_mint = testing_env.base_token_mint.unwrap();
+        let base_token_program = testing_env.base_token_type.program_address();
 
         let market = Pubkey::find_program_address(
             &[MARKET_PDA_SEED.as_bytes(), &base_token_mint.to_bytes()],
@@ -1227,13 +1366,13 @@ impl DepositAction {
         let market_base_token_ata = get_associated_token_address_with_program_id(
             &market,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &base_token_program,
         );
 
         let user_base_token_ata = get_associated_token_address_with_program_id(
             &signer,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &base_token_program,
         );
 
         Self {
@@ -1241,6 +1380,7 @@ impl DepositAction {
             market_staking,
             stake_position,
             base_token_mint,
+            base_token_program,
             market_base_token_ata,
             user_base_token_ata,
             signer,
@@ -1260,10 +1400,9 @@ impl InstructionGenerator for DepositAction {
             AccountMeta::new(self.user_base_token_ata, false),
         ];
 
-        accounts
-            .append_payer(self.signer)
-            .append_token_2022_program()
-            .append_cpi_event_accounts(tm_event_authority());
+        accounts.append_payer(self.signer);
+        accounts.push(AccountMeta::new_readonly(self.base_token_program, false));
+        accounts.append_cpi_event_accounts(tm_event_authority());
 
         accounts
     }
@@ -1287,6 +1426,7 @@ pub struct WithdrawAction {
     pub market_staking: Pubkey,
     pub stake_position: Pubkey,
     pub base_token_mint: Pubkey,
+    pub base_token_program: Pubkey,
     pub market_base_token_ata: Pubkey,
     pub user_base_token_ata: Pubkey,
     pub signer: Pubkey,
@@ -1303,6 +1443,7 @@ impl WithdrawAction {
             market_staking: deposit_action.market_staking,
             stake_position: deposit_action.stake_position,
             base_token_mint: deposit_action.base_token_mint,
+            base_token_program: deposit_action.base_token_program,
             market_base_token_ata: deposit_action.market_base_token_ata,
             user_base_token_ata: deposit_action.user_base_token_ata,
             signer: deposit_action.signer,
@@ -1322,10 +1463,9 @@ impl InstructionGenerator for WithdrawAction {
             AccountMeta::new(self.user_base_token_ata, false),
         ];
 
-        accounts
-            .append_payer(self.signer)
-            .append_token_2022_program()
-            .append_cpi_event_accounts(tm_event_authority());
+        accounts.append_payer(self.signer);
+        accounts.push(AccountMeta::new_readonly(self.base_token_program, false));
+        accounts.append_cpi_event_accounts(tm_event_authority());
 
         accounts
     }
@@ -1605,6 +1745,7 @@ pub struct CreateVestingPlanAction {
     pub staking_position: Pubkey,
     pub vesting_plan: Pubkey,
     pub base_token_mint: Pubkey,
+    pub base_token_program: Pubkey,
     pub market_base_token_ata: Pubkey,
     pub user_base_token_ata: Pubkey,
     pub signer: Pubkey,
@@ -1617,12 +1758,15 @@ pub struct CreateVestingPlanAction {
 
 impl CreateVestingPlanAction {
     pub fn new(
+        token_mill_env: &TokenMillEnv,
         vesting_amount: u64,
         start: i64,
         vesting_duration: i64,
         cliff_duration: i64,
     ) -> Self {
         let base_token_mint = make_address("base_token_mint");
+        let base_token_program = token_mill_env.base_token_type.program_address();
+
         let vesting_plan = make_address("vesting_plan");
         let signer = make_address("bob");
 
@@ -1651,13 +1795,13 @@ impl CreateVestingPlanAction {
         let market_base_token_ata = get_associated_token_address_with_program_id(
             &market,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &base_token_program,
         );
 
         let user_base_token_ata = get_associated_token_address_with_program_id(
             &signer,
             &base_token_mint,
-            &spl_token_2022::id(),
+            &base_token_program,
         );
 
         Self {
@@ -1666,6 +1810,7 @@ impl CreateVestingPlanAction {
             staking_position,
             vesting_plan,
             base_token_mint,
+            base_token_program,
             market_base_token_ata,
             user_base_token_ata,
             signer,
@@ -1689,9 +1834,9 @@ impl InstructionGenerator for CreateVestingPlanAction {
             AccountMeta::new(self.user_base_token_ata, false),
         ];
 
+        accounts.append_payer(self.signer);
+        accounts.push(AccountMeta::new_readonly(self.base_token_program, false));
         accounts
-            .append_payer(self.signer)
-            .append_token_2022_program()
             .append_system_program()
             .append_cpi_event_accounts(tm_event_authority());
 
@@ -1721,20 +1866,15 @@ pub struct ReleaseAction {
     pub staking_position: Pubkey,
     pub vesting_plan: Pubkey,
     pub base_token_mint: Pubkey,
+    pub base_token_program: Pubkey,
     pub market_base_token_ata: Pubkey,
     pub user_base_token_ata: Pubkey,
     pub signer: Pubkey,
 }
 
-impl Default for ReleaseAction {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ReleaseAction {
-    pub fn new() -> Self {
-        let create_vesting_plan_action = CreateVestingPlanAction::new(0, 0, 0, 0);
+    pub fn new(token_mill_env: &TokenMillEnv) -> Self {
+        let create_vesting_plan_action = CreateVestingPlanAction::new(token_mill_env, 0, 0, 0, 0);
 
         Self {
             market: create_vesting_plan_action.market,
@@ -1742,6 +1882,7 @@ impl ReleaseAction {
             staking_position: create_vesting_plan_action.staking_position,
             vesting_plan: create_vesting_plan_action.vesting_plan,
             base_token_mint: create_vesting_plan_action.base_token_mint,
+            base_token_program: create_vesting_plan_action.base_token_program,
             market_base_token_ata: create_vesting_plan_action.market_base_token_ata,
             user_base_token_ata: create_vesting_plan_action.user_base_token_ata,
             signer: create_vesting_plan_action.signer,
@@ -1761,10 +1902,9 @@ impl InstructionGenerator for ReleaseAction {
             AccountMeta::new(self.user_base_token_ata, false),
         ];
 
-        accounts
-            .append_payer(self.signer)
-            .append_token_2022_program()
-            .append_cpi_event_accounts(tm_event_authority());
+        accounts.append_payer(self.signer);
+        accounts.push(AccountMeta::new_readonly(self.base_token_program, false));
+        accounts.append_cpi_event_accounts(tm_event_authority());
 
         accounts
     }

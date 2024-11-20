@@ -54,6 +54,26 @@ pub mod token_mill {
         )
     }
 
+    pub fn create_market_with_spl(
+        ctx: Context<CreateMarketWithSpl>,
+        name: String,
+        symbol: String,
+        uri: String,
+        total_supply: u64,
+        creator_fee_share: u16,
+        staking_fee_share: u16,
+    ) -> Result<()> {
+        instructions::create_market_with_spl::handler(
+            ctx,
+            name,
+            symbol,
+            uri,
+            total_supply,
+            creator_fee_share,
+            staking_fee_share,
+        )
+    }
+
     pub fn set_market_prices(
         ctx: Context<MarketSettingsUpdate>,
         bid_prices: [u64; constant::PRICES_LENGTH],

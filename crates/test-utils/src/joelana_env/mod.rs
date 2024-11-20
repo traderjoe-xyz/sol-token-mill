@@ -1,14 +1,17 @@
 use anchor_lang::{
     prelude::{AccountMeta, Clock},
-    AccountDeserialize,
-};
-use anchor_spl::token_interface::spl_token_2022::{
-    extension::StateWithExtensions, solana_program::program_pack::Pack,
-    state::Account as SplAccount,
+    AccountDeserialize, Id,
 };
 use anchor_spl::{
     associated_token::spl_associated_token_account,
     token_2022::spl_token_2022::{self},
+};
+use anchor_spl::{
+    metadata::Metadata,
+    token_interface::spl_token_2022::{
+        extension::StateWithExtensions, solana_program::program_pack::Pack,
+        state::Account as SplAccount,
+    },
 };
 use anyhow::Result;
 use litesvm::{
@@ -101,6 +104,15 @@ impl JoelanaEnv {
     pub fn add_token_mill_program(&mut self) {
         self.svm_engine
             .add_program_from_file(token_mill::id(), "../../target/deploy/token_mill.so")
+            .unwrap();
+    }
+
+    pub fn add_metadata_program(&mut self) {
+        self.svm_engine
+            .add_program_from_file(
+                Metadata::id(),
+                "../../crates/test-utils/src/joelana_env/utils/metadata.so",
+            )
             .unwrap();
     }
 
@@ -267,10 +279,12 @@ pub trait InstructionGenerator {
 trait AccountMetaVecExt {
     fn append_payer(&mut self, payer: Pubkey) -> &mut Self;
     fn append_system_program(&mut self) -> &mut Self;
+    fn append_rent_program(&mut self) -> &mut Self;
     fn append_cpi_event_accounts(&mut self, event_authority: Pubkey) -> &mut Self;
     fn append_token_program(&mut self) -> &mut Self;
     fn append_token_2022_program(&mut self) -> &mut Self;
     fn append_associated_token_program(&mut self) -> &mut Self;
+    fn append_metadata_program(&mut self) -> &mut Self;
 }
 
 impl AccountMetaVecExt for Vec<AccountMeta> {
@@ -283,6 +297,15 @@ impl AccountMetaVecExt for Vec<AccountMeta> {
     fn append_system_program(&mut self) -> &mut Self {
         self.push(AccountMeta::new_readonly(
             solana_sdk::system_program::ID,
+            false,
+        ));
+
+        self
+    }
+
+    fn append_rent_program(&mut self) -> &mut Self {
+        self.push(AccountMeta::new_readonly(
+            solana_sdk::sysvar::rent::ID,
             false,
         ));
 
@@ -313,6 +336,12 @@ impl AccountMetaVecExt for Vec<AccountMeta> {
             spl_associated_token_account::id(),
             false,
         ));
+
+        self
+    }
+
+    fn append_metadata_program(&mut self) -> &mut Self {
+        self.push(AccountMeta::new_readonly(Metadata::id(), false));
 
         self
     }
