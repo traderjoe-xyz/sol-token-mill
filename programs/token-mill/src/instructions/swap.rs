@@ -268,9 +268,13 @@ mod tests {
     }
 
     #[rstest]
-    fn swap(#[values(TokenType::Token, TokenType::Token2022)] token_type: TokenType) {
+    fn swap(
+        #[values(TokenType::Token, TokenType::Token2022)] base_token_type: TokenType,
+        #[values(TokenType::Token, TokenType::Token2022)] quote_token_type: TokenType,
+    ) {
         let mut testing_env = TokenMillEnv::new()
-            .with_quote_token_mint(token_type, 9)
+            .with_base_token_type(base_token_type)
+            .with_quote_token_mint(quote_token_type, 9)
             .with_default_market();
         testing_env.svm.change_payer("bob");
 

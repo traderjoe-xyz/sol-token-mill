@@ -98,17 +98,23 @@ pub fn handler(ctx: Context<Release>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::VestingPlan;
-    use joelana_test_utils::joelana_env::actions::token_mill::{
-        CreateVestingPlanAction, ReleaseAction, TokenMillEnv,
+    use joelana_test_utils::joelana_env::{
+        actions::token_mill::{CreateVestingPlanAction, ReleaseAction, TokenMillEnv},
+        TokenType,
     };
+    use rstest::rstest;
 
     const VESTING_AMOUNT: u64 = 1_000_000_000;
     const STARTING_SLOT: i64 = 333;
     const VESTING_DURATION: i64 = 300;
     const CLIFF_DURATION: i64 = 60;
 
-    fn setup_env() -> (TokenMillEnv, ReleaseAction) {
-        let mut testing_env = TokenMillEnv::default().with_staking(VESTING_AMOUNT);
+    fn setup_env(base_token_type: TokenType) -> (TokenMillEnv, ReleaseAction) {
+        let mut testing_env = TokenMillEnv::new()
+            .with_base_token_type(base_token_type)
+            .with_default_quote_token_mint()
+            .with_default_market()
+            .with_staking(VESTING_AMOUNT);
 
         testing_env.svm.warp(STARTING_SLOT);
 
@@ -166,7 +172,7 @@ mod tests {
 
     #[test]
     fn release_during_cliff() {
-        let (mut testing_env, action) = setup_env();
+        let (mut testing_env, action) = setup_env(TokenType::Token2022);
 
         testing_env.svm.warp(CLIFF_DURATION / 2);
 
@@ -179,9 +185,11 @@ mod tests {
         assert_eq!(vesting_plan.amount_released, 0);
     }
 
-    #[test]
-    fn release_after_cliff() {
-        let (mut testing_env, action) = setup_env();
+    #[rstest]
+    fn release_after_cliff(
+        #[values(TokenType::Token, TokenType::Token2022)] base_token_type: TokenType,
+    ) {
+        let (mut testing_env, action) = setup_env(base_token_type);
 
         testing_env.svm.warp(VESTING_DURATION / 2);
 
@@ -196,7 +204,7 @@ mod tests {
 
     #[test]
     fn release_after_vesting() {
-        let (mut testing_env, action) = setup_env();
+        let (mut testing_env, action) = setup_env(TokenType::Token2022);
 
         testing_env.svm.warp(VESTING_DURATION + 1);
 
@@ -211,7 +219,7 @@ mod tests {
 
     #[test]
     fn consecutive_releases() {
-        let (mut testing_env, action) = setup_env();
+        let (mut testing_env, action) = setup_env(TokenType::Token2022);
 
         testing_env.svm.warp(VESTING_DURATION / 2);
 

@@ -114,16 +114,24 @@ pub fn handler(
 #[cfg(test)]
 mod tests {
     use crate::VestingPlan;
-    use joelana_test_utils::joelana_env::actions::token_mill::{
-        CreateVestingPlanAction, TokenMillEnv,
+    use joelana_test_utils::joelana_env::{
+        actions::token_mill::{CreateVestingPlanAction, TokenMillEnv},
+        TokenType,
     };
+    use rstest::rstest;
 
     const VESTING_AMOUNT: u64 = 1_000_000_000;
     const STARTING_SLOT: i64 = 333;
 
-    #[test]
-    fn create_vesting_plan() {
-        let mut testing_env = TokenMillEnv::default().with_staking(VESTING_AMOUNT);
+    #[rstest]
+    fn create_vesting_plan(
+        #[values(TokenType::Token, TokenType::Token2022)] base_token_type: TokenType,
+    ) {
+        let mut testing_env = TokenMillEnv::new()
+            .with_base_token_type(base_token_type)
+            .with_default_quote_token_mint()
+            .with_default_market()
+            .with_staking(VESTING_AMOUNT);
 
         testing_env.svm.warp(STARTING_SLOT);
 
