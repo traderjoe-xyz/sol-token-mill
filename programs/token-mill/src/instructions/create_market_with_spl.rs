@@ -39,8 +39,7 @@ pub struct CreateMarketWithSpl<'info> {
         init,
         payer = creator,
         mint::authority = market,
-        mint::decimals = MILL_TOKEN_DECIMALS,
-        token::token_program = token_program
+        mint::decimals = MILL_TOKEN_DECIMALS
     )]
     pub base_token_mint: Box<Account<'info, Mint>>,
 
