@@ -31,7 +31,7 @@ pub struct Swap<'info> {
 
     #[account(
         mut,
-        associated_token::mint = market.load()?.base_token_mint,
+        associated_token::mint = base_token_mint,
         associated_token::authority = market,
         associated_token::token_program = base_token_program
     )]
@@ -39,31 +39,21 @@ pub struct Swap<'info> {
 
     #[account(
         mut,
-        associated_token::mint = market.load()?.quote_token_mint,
+        associated_token::mint = quote_token_mint,
         associated_token::authority = market,
         associated_token::token_program = quote_token_program
     )]
     pub market_quote_token_ata: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        associated_token::mint = market.load()?.base_token_mint,
-        associated_token::authority = user,
-        associated_token::token_program = base_token_program
-    )]
-    pub user_base_token_ata: InterfaceAccount<'info, TokenAccount>,
+    #[account(mut, token::mint = base_token_mint)]
+    pub user_base_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(mut, token::mint = quote_token_mint)]
+    pub user_quote_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
-        associated_token::mint = market.load()?.quote_token_mint,
-        associated_token::authority = user,
-        associated_token::token_program = quote_token_program
-    )]
-    pub user_quote_token_ata: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        associated_token::mint = market.load()?.quote_token_mint,
+        associated_token::mint = quote_token_mint,
         associated_token::authority = config.protocol_fee_recipient,
         associated_token::token_program = quote_token_program
     )]
@@ -145,8 +135,8 @@ pub fn handler(
             base_amount,
             &ctx.accounts.quote_token_mint,
             &ctx.accounts.base_token_mint,
-            &ctx.accounts.user_quote_token_ata,
-            &ctx.accounts.user_base_token_ata,
+            &ctx.accounts.user_quote_token_account,
+            &ctx.accounts.user_base_token_account,
             &ctx.accounts.market_quote_token_ata,
             &ctx.accounts.market_base_token_ata,
             &ctx.accounts.quote_token_program,
@@ -157,8 +147,8 @@ pub fn handler(
             quote_amount,
             &ctx.accounts.base_token_mint,
             &ctx.accounts.quote_token_mint,
-            &ctx.accounts.user_base_token_ata,
-            &ctx.accounts.user_quote_token_ata,
+            &ctx.accounts.user_base_token_account,
+            &ctx.accounts.user_quote_token_account,
             &ctx.accounts.market_base_token_ata,
             &ctx.accounts.market_quote_token_ata,
             &ctx.accounts.base_token_program,
