@@ -107,6 +107,12 @@ impl JoelanaEnv {
             .unwrap();
     }
 
+    pub fn set_token_mill_program_from_binary(&mut self, path: &str) {
+        self.svm_engine
+            .add_program_from_file(token_mill::id(), path)
+            .unwrap();
+    }
+
     pub fn add_metadata_program(&mut self) {
         self.svm_engine
             .add_program_from_file(

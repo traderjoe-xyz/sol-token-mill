@@ -77,6 +77,29 @@ impl TokenMillEnv {
         }
     }
 
+    pub fn new_with_custom_program(path: &str) -> Self {
+        let mut svm = JoelanaEnv::new();
+
+        svm.set_token_mill_program_from_binary(path);
+        svm.add_metadata_program();
+
+        svm.execute_actions(&[
+            &CreateConfigAction::new(),
+            &CreateReferralAccountAction::new(),
+        ])
+        .unwrap();
+
+        Self {
+            svm,
+            config: make_address("config"),
+            market: Pubkey::new_unique(),
+            base_token_mint: Some(make_address("base_token_mint")),
+            base_token_type: TokenType::Token2022,
+            quote_token_mint: None,
+            quote_token_type: TokenType::Token,
+        }
+    }
+
     pub fn with_default_quote_token_mint(self) -> Self {
         self.with_quote_token_mint(TokenType::Token, 9)
     }
