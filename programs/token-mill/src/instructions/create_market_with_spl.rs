@@ -73,7 +73,6 @@ pub struct CreateMarketWithSpl<'info> {
     pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
     pub token_program: Program<'info, Token>,
     pub token_metadata_program: Program<'info, Metadata>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -174,7 +173,7 @@ impl<'info> CreateMarketWithSpl<'info> {
                     metadata: self.base_token_metadata.to_account_info(),
                     mint_authority: self.market.to_account_info(),
                     system_program: self.system_program.to_account_info(),
-                    rent: self.rent.to_account_info(),
+                    rent: self.system_program.to_account_info(),
                 },
                 &[market_seeds],
             ),

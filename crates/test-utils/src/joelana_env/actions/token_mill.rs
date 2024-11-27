@@ -767,7 +767,6 @@ impl InstructionGenerator for CreateMarketWithSplAction {
         accounts
             .append_payer(self.signer)
             .append_system_program()
-            .append_rent_program()
             .append_token_program()
             .append_metadata_program()
             .append_associated_token_program()
