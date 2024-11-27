@@ -10,7 +10,7 @@ use solana_sdk::pubkey::Pubkey;
 
 // v1 -> v1.1
 // v1 : Original deployment
-// v1.1 : commit 11faa567a21ea1c94cd63c6d0dcd1accd0ed0a1d
+// v1.1 : commit cb509ffde963d47730f0b09df0fea2dc9972ba5d
 #[test]
 fn upgrade_v_1_1() {
     let mut env = TokenMillEnv::new_with_custom_program(
