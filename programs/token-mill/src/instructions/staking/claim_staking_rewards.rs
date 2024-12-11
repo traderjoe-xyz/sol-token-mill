@@ -47,7 +47,7 @@ pub struct StakingRewardsClaim<'info> {
     pub quote_token_program: Interface<'info, TokenInterface>,
 }
 
-pub fn handler(ctx: Context<StakingRewardsClaim>) -> Result<()> {
+pub fn handler(ctx: Context<StakingRewardsClaim>) -> Result<u64> {
     let pending_rewards;
     let base_token_mint;
     let market_bump;
@@ -89,7 +89,7 @@ pub fn handler(ctx: Context<StakingRewardsClaim>) -> Result<()> {
         amount_distributed: pending_rewards,
     });
 
-    Ok(())
+    Ok(pending_rewards)
 }
 
 #[cfg(test)]

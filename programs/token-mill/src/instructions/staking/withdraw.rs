@@ -55,17 +55,23 @@ pub fn handler(ctx: Context<StakeUpdate>, amount: u64) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use joelana_test_utils::joelana_env::actions::token_mill::{
-        DepositAction, TokenMillEnv, WithdrawAction,
+    use joelana_test_utils::joelana_env::{
+        actions::token_mill::{DepositAction, TokenMillEnv, WithdrawAction},
+        TokenType,
     };
+    use rstest::rstest;
 
     use crate::{MarketStaking, StakePosition};
 
     const STAKE_AMOUNT: u64 = 100_000_000;
 
-    #[test]
-    fn withdraw() {
-        let mut testing_env = TokenMillEnv::default().with_staking(STAKE_AMOUNT);
+    #[rstest]
+    fn withdraw(#[values(TokenType::Token, TokenType::Token2022)] base_token_type: TokenType) {
+        let mut testing_env = TokenMillEnv::new()
+            .with_base_token_type(base_token_type)
+            .with_default_quote_token_mint()
+            .with_default_market()
+            .with_staking(STAKE_AMOUNT);
 
         testing_env.svm.change_payer("bob");
 

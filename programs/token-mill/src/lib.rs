@@ -54,6 +54,26 @@ pub mod token_mill {
         )
     }
 
+    pub fn create_market_with_spl(
+        ctx: Context<CreateMarketWithSpl>,
+        name: String,
+        symbol: String,
+        uri: String,
+        total_supply: u64,
+        creator_fee_share: u16,
+        staking_fee_share: u16,
+    ) -> Result<()> {
+        instructions::create_market_with_spl::handler(
+            ctx,
+            name,
+            symbol,
+            uri,
+            total_supply,
+            creator_fee_share,
+            staking_fee_share,
+        )
+    }
+
     pub fn set_market_prices(
         ctx: Context<MarketSettingsUpdate>,
         bid_prices: [u64; constant::PRICES_LENGTH],
@@ -95,7 +115,7 @@ pub mod token_mill {
         instructions::staking::withdraw::handler(ctx, amount)
     }
 
-    pub fn claim_staking_rewards(ctx: Context<StakingRewardsClaim>) -> Result<()> {
+    pub fn claim_staking_rewards(ctx: Context<StakingRewardsClaim>) -> Result<u64> {
         instructions::staking::claim_staking_rewards::handler(ctx)
     }
 
@@ -116,7 +136,7 @@ pub mod token_mill {
         )
     }
 
-    pub fn release(ctx: Context<Release>) -> Result<()> {
+    pub fn release(ctx: Context<Release>) -> Result<u64> {
         instructions::vesting::release::handler(ctx)
     }
 
